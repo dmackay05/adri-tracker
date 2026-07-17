@@ -45,6 +45,7 @@ function render(){
   app.innerHTML = "";
   app.appendChild(renderTopbar());
   if(state.view === "today") app.appendChild(renderToday());
+  if(state.view === "log") app.appendChild(renderLog());
   if(state.view === "dashboard") app.appendChild(renderDashboard());
   if(state.view === "settings") app.appendChild(renderSettings());
   app.appendChild(renderBottomNav());
@@ -151,6 +152,52 @@ function renderToday(){
   return frag;
 }
 
+function renderLog(){
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el("div", "section-title", "Log History"));
+
+  const dates = Object.keys(db).sort().reverse();
+  if(!dates.length){
+    frag.appendChild(el("div", "rest-note", "Nothing logged yet. Entries you check off on the Today tab will show up here."));
+    return frag;
+  }
+
+  dates.forEach(dateStr => {
+    const dow = new Date(dateStr).getDay();
+    const map = ["sun","mon","tue","wed","thu","fri","sat"];
+    const day = dayById(map[dow]);
+    const entries = db[dateStr];
+    const exIds = Object.keys(entries);
+    if(!exIds.length) return;
+
+    const card = el("div", "card");
+    const top = el("div", "row-top");
+    const dt = new Date(dateStr + "T00:00:00");
+    const dateLabel = dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    top.appendChild(el("div", "name", dateLabel));
+    const doneCount = exIds.filter(id => entries[id].done).length;
+    top.appendChild(el("div", "target", doneCount + "/" + exIds.length + " done"));
+    card.appendChild(top);
+
+    exIds.forEach(exId => {
+      const ex = day.exercises.find(e => e.id === exId);
+      const e = entries[exId];
+      const row = el("div", "spec");
+      row.style.justifyContent = "space-between";
+      row.style.marginTop = "8px";
+      const name = ex ? ex.name : exId;
+      const details = [e.done ? "✓" : "—", e.sets.band ? e.sets.band : "", e.sets.notes ? e.sets.notes : ""].filter(Boolean).join(" · ");
+      row.appendChild(el("span", "", name));
+      row.appendChild(el("span", "", details));
+      card.appendChild(row);
+    });
+
+    frag.appendChild(card);
+  });
+
+  return frag;
+}
+
 function renderDashboard(){
   const frag = document.createDocumentFragment();
   frag.appendChild(el("div", "section-title", "This Week"));
@@ -247,7 +294,7 @@ function renderSettings(){
 
 function renderBottomNav(){
   const nav = el("div", "bottom-nav");
-  [["today","TODAY"],["dashboard","PROGRESS"],["settings","SETTINGS"]].forEach(([id,label]) => {
+  [["today","TODAY"],["log","LOG"],["dashboard","PROGRESS"],["settings","SETTINGS"]].forEach(([id,label]) => {
     const btn = el("button", "nav-btn" + (state.view===id ? " active" : ""), label);
     btn.onclick = () => { state.view = id; render(); };
     nav.appendChild(btn);
